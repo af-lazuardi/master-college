@@ -73,18 +73,45 @@ cv::Mat get_half_rect(cv::Mat im_src) {
     
 }
 
+cv::Point RotatePoint(const cv::Point& p, float rad)
+{
+    const float x = std::cos(rad) * p.x - std::sin(rad) * p.y;
+    const float y = std::sin(rad) * p.x + std::cos(rad) * p.y;
+
+    const cv::Point rot_p(x, y);
+    return rot_p;
+}
+
+cv::Point RotatePoint(const cv::Point& cen_pt, const cv::Point& p, float rad)
+{
+    const cv::Point trans_pt = p - cen_pt;
+    const cv::Point rot_pt   = RotatePoint(trans_pt, rad);
+    const cv::Point fin_pt   = rot_pt + cen_pt;
+
+    return fin_pt;
+}
+
+float degree_to_rad(float degree) {
+    return degree * (PI/180.0f);
+}
+
 cv::Mat circle_to_rectangle(cv::Mat im_src) {
     int width, height;
     height = im_src.rows/2;
     width = circumference(height);
     
     cv::Point center(height,height);
-    cv::circle(im_src, center, 2, cv::Scalar(255,0,0));
-
+    cv::Point end(0,height);
     
+    int i =0;
+    while(i < 360) {
+        float degree_rotate = 5;
+        GUI::create_line(im_src,center,end);
+        i += (int)degree_rotate;
+        end = RotatePoint(center,end,degree_to_rad(degree_rotate));
+    }
     
-    
-    std::cout << im_src.channels() << std::endl;
+   
     
     cv::Mat im_rect(height,width,CV_64FC3,cv::Scalar(255,0,0));
     

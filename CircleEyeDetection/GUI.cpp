@@ -198,7 +198,7 @@ void GUI::create_line(cv::Mat im, cv::Point start, cv::Point end) {
     
     //normalize_point_at_center(im.cols,im.rows,&start);
     //normalize_point_at_center(im.cols,im.rows,&end);
-    cv::line( im, start, end, cv::Scalar( 0, 0, 0 ), thickness, lineType );
+    cv::line( im, start, end, cv::Scalar( 255, 255, 255 ), thickness, lineType );
 }
 
 
