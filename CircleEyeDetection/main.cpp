@@ -78,7 +78,7 @@ cv::Point RotatePoint(const cv::Point& p, float rad)
     const float x = std::cos(rad) * p.x - std::sin(rad) * p.y;
     const float y = std::sin(rad) * p.x + std::cos(rad) * p.y;
 
-    const cv::Point rot_p(x, y);
+    const cv::Point rot_p((int)ceil(x),(int)ceil(y));
     return rot_p;
 }
 
@@ -97,18 +97,44 @@ float degree_to_rad(float degree) {
 
 cv::Mat circle_to_rectangle(cv::Mat im_src) {
     int width, height;
-    height = im_src.rows/2;
+    std::cout << im_src.rows << ":"  << im_src.cols << std::endl;
+    height = (int) round(im_src.rows/2.0);
     width = circumference(height);
+    
+    
+    
+    
+    
+    /*
+    cv::Point center(height,height);
+    cv::Point start(0,height);
+    cv::Point end(im_src.cols,height);
+    int i = 0;
+    while(i < 180) {
+        float degree_rotate = 10;
+        GUI::create_line(im_src,start,end);
+        
+        cv::Point new_start = RotatePoint(center,start,degree_to_rad(degree_rotate));
+        cv::Point new_end = RotatePoint(center,end,degree_to_rad(degree_rotate));
+        GUI::create_line(im_src,start,new_start);
+        GUI::create_line(im_src,end,new_end);
+        
+        start = new_start;
+        end = new_end;
+        
+        i += (int)degree_rotate;
+    }*/
     
     cv::Point center(height,height);
     cv::Point end(0,height);
-    
     int i =0;
     while(i < 360) {
-        float degree_rotate = 5;
+        float degree_rotate = 30;
         GUI::create_line(im_src,center,end);
         i += (int)degree_rotate;
-        end = RotatePoint(center,end,degree_to_rad(degree_rotate));
+        cv::Point new_end = RotatePoint(center,end,degree_to_rad(degree_rotate));
+        GUI::create_line(im_src,end,new_end);
+        end = new_end;
     }
     
    

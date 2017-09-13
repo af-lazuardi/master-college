@@ -164,13 +164,17 @@ cv::Mat GUI::getCircle(const cv::Mat im, int type_circle ,const cv::String win_n
     
     
     if(type_circle == 1) {
-        int radius = (int) GUI::get_euclidean_distance(GUI::tl,GUI::br);
+        int radius = (int) ceil(GUI::get_euclidean_distance(GUI::tl,GUI::br));
+        radius = (radius % 2 == 0) ? radius : radius+1;
+        
         cv::Mat mask = cv::Mat(GUI::im_select.rows,GUI::im_select.cols, CV_8UC1,cv::Scalar(255,255,255));
         cv::circle(mask, GUI::tl, radius, cv::Scalar(0,0,0), -1, 8, 0);
         GUI::im_select.copyTo(dst,mask); // copy values of img to dst if mask is > 0.
     }
     else if(type_circle == 2) {
-        int radius = (int) GUI::get_euclidean_distance(GUI::tl,GUI::br);
+        int radius = (int) ceil(GUI::get_euclidean_distance(GUI::tl,GUI::br));
+        radius = (radius % 2 == 0) ? radius : radius+1;
+        
         cv::Mat ROI(GUI::im_select, cv::Rect( GUI::tl.x-radius, GUI::tl.y-radius, radius*2, radius*2 ));
         
         cv::Point center_of_ROI;
