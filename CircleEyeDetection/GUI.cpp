@@ -19,6 +19,8 @@ bool GUI::tl_set;
 bool GUI::br_set;
 cv::Point GUI::tl;
 cv::Point GUI::br;
+int GUI::radius_iris;
+int GUI::radius_pupil;
 
 GUI::GUI() {
 }
@@ -163,25 +165,25 @@ cv::Mat GUI::getCircle(const cv::Mat im, int type_circle ,const cv::String win_n
     cv::Mat dst;
     
     
-    if(type_circle == 1) {
-        int radius = (int) round(GUI::get_euclidean_distance(GUI::tl,GUI::br));
-        radius = (radius % 2 == 0) ? radius : radius+1;
+    if(type_circle == 1) { //pupil
+        radius_pupil = (int) round(GUI::get_euclidean_distance(GUI::tl,GUI::br));
+        radius_pupil = (radius_pupil % 2 == 0) ? radius_pupil : radius_pupil+1;
         
         cv::Mat mask = cv::Mat(GUI::im_select.rows,GUI::im_select.cols, CV_8UC1,cv::Scalar(255,255,255));
-        cv::circle(mask, GUI::tl, radius, cv::Scalar(0,0,0), -1, 8, 0);
+        cv::circle(mask, GUI::tl, radius_pupil, cv::Scalar(0,0,0), -1, 8, 0);
         GUI::im_select.copyTo(dst,mask); // copy values of img to dst if mask is > 0.
     }
-    else if(type_circle == 2) {
-        int radius = (int) round(GUI::get_euclidean_distance(GUI::tl,GUI::br));
-        radius = (radius % 2 == 0) ? radius : radius+1;
+    else if(type_circle == 2) { //iris
+        radius_iris = (int) round(GUI::get_euclidean_distance(GUI::tl,GUI::br));
+        radius_iris = (radius_iris % 2 == 0) ? radius_iris : radius_iris+1;
         
-        cv::Mat ROI(GUI::im_select, cv::Rect( GUI::tl.x-radius, GUI::tl.y-radius, radius*2, radius*2 ));
+        cv::Mat ROI(GUI::im_select, cv::Rect( GUI::tl.x-radius_iris, GUI::tl.y-radius_iris, radius_iris*2, radius_iris*2 ));
         
         cv::Point center_of_ROI;
         center_of_ROI.x = ROI.cols/2;
         center_of_ROI.y = ROI.rows/2;
         cv::Mat mask = cv::Mat::zeros( ROI.rows, ROI.cols, CV_8UC1 );
-        cv::circle(mask, center_of_ROI, radius, cv::Scalar(255,255,255), -1, 8, 0);
+        cv::circle(mask, center_of_ROI, radius_iris, cv::Scalar(255,255,255), -1, 8, 0);
         ROI.copyTo(dst,mask); // copy values of img to dst if mask is > 0.
         
         cv::circle(dst, center_of_ROI, 2, cv::Scalar(255,0,0));

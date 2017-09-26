@@ -41,6 +41,8 @@ public:
     static bool br_set;
     static cv::Point tl;
     static cv::Point br;
+    static int radius_iris;
+    static int radius_pupil;
 private:
 
 };
