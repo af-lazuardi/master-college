@@ -35,7 +35,8 @@ static cv::String WIN_NAME_ORI = "Original Eye";
 static cv::String WIN_NAME_IRIS = "Iris Eye";
 static cv::String WIN_NAME_PUPIL = "Iris Eye Without Pupil";
 static cv::String WIN_NAME_IRIS_LINE_DETECT = "Iris Eye Line Detection";
-static cv::String WIN_NAME_RECT = "Iris Transform to Rectangle";
+static cv::String WIN_NAME_RECT = "Iris Transformation";
+static cv::String WIN_NAME_IRIS_FROM_RECT = "Invert Transformation";
 
 
 cv::Mat laplacian_line_detection(cv::Mat imsource) {
@@ -96,7 +97,6 @@ double interpolate(cv::Mat im, double xR, double yR) {
         cv::Mat A = (cv::Mat_<double>(4,4) << xf, yf, xf*yf, 1, xf, yc, xf*yc, 1, xc, yf, xc*yf, 1, xc, yc, xc*yc, 1);
         cv::Mat r = (cv::Mat_<double>(4,1) << im.at<double>(xf,yf), im.at<double>(xf,yc), im.at<double>(xc,yf), im.at<double>(xc,yc));
         cv::Mat a(4,1,CV_64F);
-        
         cv::solve(A,r,a,cv::DECOMP_LU);
         cv::Mat w = (cv::Mat_<double>(1,4) << xR, yR, xR*yR, 1);
         
@@ -108,7 +108,44 @@ double interpolate(cv::Mat im, double xR, double yR) {
     return v;
 }
 
-cv::Mat to_polar(cv::Mat im_src, int r_iris, int r_pupil) {
+double interpolate(cv::Mat im, double r, double t, double rMin, double rMax, int M, int N, double delR, double delT) {
+    double ri,ti,v;
+    ri = 1+ (r-rMin)/delR;
+    ti = 1+ t/delT;
+    
+    int rf,rc,tf,tc;
+    rf = floor(ri);
+    rc = ceil(ri);
+    tf = floor(ti);
+    tc = ceil(tc);
+    
+    if(tc > N)
+        tc = tf;
+    
+    if((rf==rc) && (tc==tf)) {
+        v = im.at<double>(rc,tc);
+    }
+    else if(rf==rc) {
+        v = im.at<double>(rf,tf) + (ti-tf)*(im.at<double>(rf,tc)-im.at<double>(rf,tf));
+    }
+    else if(tf==tc) {
+        v = im.at<double>(rf,tf) + (ri-tf)*(im.at<double>(rc,tf)-im.at<double>(rf,tf));
+    }
+    else {
+        cv::Mat A = (cv::Mat_<double>(4,4) << rf, tf, rf*tf, 1, rf, tc, rf*tc, 1, rc, tf, rc*tf, 1, rc, tc, rc*tc, 1);
+        cv::Mat z = (cv::Mat_<double>(4,1) << im.at<double>(rf,tf), im.at<double>(rf,tc), im.at<double>(rc,tf), im.at<double>(rc,tc));
+        cv::Mat a(4,1,CV_64F);
+        cv::solve(A,z,a,cv::DECOMP_LU);
+        cv::Mat w = (cv::Mat_<double>(1,4) << ri, ti, ri*ti, 1);
+        
+        cv::Mat V = w*a;
+        v= V.at<double>(0,0);
+    }
+    
+    return v;
+}
+
+cv::Mat iris_to_polar(cv::Mat im_src, int r_iris, int r_pupil) {
     cv::Mat im_src_double;
     cv::Mat im_src_cp = im_src.clone();
     im_src_cp.convertTo(im_src_double,CV_64F);
@@ -131,7 +168,7 @@ cv::Mat to_polar(cv::Mat im_src, int r_iris, int r_pupil) {
     
     
     rMax = (r_iris*2)/(double)im_src.rows;
-    rMin = (r_pupil*2)/(double)im_src.rows;
+    rMin = ((r_pupil+2)*2)/(double)im_src.rows;
     
     delR = (rMax-rMin)/(double)(M-1);
     delT = (2*PI)/(double)N;
@@ -154,6 +191,46 @@ cv::Mat to_polar(cv::Mat im_src, int r_iris, int r_pupil) {
     return imP;
 }
 
+cv::Mat polar_to_iris(cv::Mat im_src, int r_iris, int r_pupil, int Mr, int Nr) {
+    cv::Mat im_src_cp = im_src.clone();
+    cv::Mat imR = cv::Mat::zeros(Mr,Nr,CV_64F);
+    
+    int M,N;
+    double Om,On,sx,sy,rMax,rMin,delR,delT,x,y,r,t;
+    
+    Om = (Mr+1)/2.0;
+    On = (Nr+1)/2.0;
+    
+    sx = (Mr-1)/2.0;
+    sy = (Nr-1)/2.0;
+    
+    M = im_src_cp.rows;
+    N = im_src_cp.cols;
+    
+    rMax = (r_iris*2)/(double)Mr;
+    rMin = ((r_pupil+2)*2)/(double)Mr;
+    
+    delR = (rMax-rMin)/(double)(M-1);
+    delT = (2*PI)/(double)N;
+
+    for(int xi=0; xi<Mr; xi++) {
+        for(int yi=0; yi<Nr; yi++) {
+            x = (xi+1-Om)/sx;
+            y = (yi+1-On)/sy;
+            
+            r = sqrt(pow(x,2)+pow(y,2));
+            
+            if(r >= rMin && r <= rMax) {
+                t = atan2(y,x);
+                if(t < 0) {
+                    t = t + 2*PI;
+                }
+                imR.at<double>(xi,yi) = interpolate(im_src_cp,r,t,rMin,rMax,M,N,delR,delT);
+            }
+        }
+    }
+    return imR;
+}
 
 
 /*
@@ -171,8 +248,11 @@ int main(int argc, char** argv) {
     cv::Mat im_line_detection = laplacian_line_detection(im_pupil);
     cv::imshow(WIN_NAME_IRIS_LINE_DETECT,im_line_detection);
     
-    cv::Mat im_polar = to_polar(im_line_detection, GUI::radius_iris, GUI::radius_pupil);
+    cv::Mat im_polar = iris_to_polar(im_line_detection, GUI::radius_iris, GUI::radius_pupil);
     cv::imshow(WIN_NAME_RECT,im_polar);
+    
+    cv::Mat im_iris_from_polar = polar_to_iris(im_polar, GUI::radius_iris, GUI::radius_pupil, im_iris.rows, im_iris.cols);
+    cv::imshow(WIN_NAME_IRIS_FROM_RECT,im_iris_from_polar);
     
     cv::waitKey(0);
     return 0;
